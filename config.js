@@ -14,6 +14,9 @@ let blockedSites = ['www.chase.com'] // accessing to chase.com was reported by g
 if (process.env.herokuAddr) {
     config.serverName = process.env.herokuAddr
 }
+if (process.env.SERVER_NAME) {
+    config.serverName = process.env.SERVER_NAME
+}
 config.serverName = config.serverName.replace(/https?:\/\//g, '')
 console.log(`config.serverName:${config.serverName}`)
 if (process.env.localFlag === 'true') {
@@ -234,6 +237,31 @@ const siteSpecificReplace = {
         'alt="img/': `alt="/https/www.mitbbs.com/img/`,
         'src="[.]/img/': `src="/https/www.mitbbs.com/img/`,
         'src="[.]{2}/img/': `src="/https/www.mitbbs.com/img/`,
+    },
+    'bbs.nga.cn': {
+        // fix AJAX PHP endpoints in JavaScript
+        '"/nuke.php?': '"/https/bbs.nga.cn/nuke.php?',
+        '"read.php?': '"/https/bbs.nga.cn/read.php?',
+        '"forum.php?': '"/https/bbs.nga.cn/forum.php?',
+        '"/app_api.php': '"/https/bbs.nga.cn/app_api.php',
+        // fix cross-domain auth references
+        '"(account.178.com)': `"${serverName}:${port}/https/$1`,
+        '"(img[0-9]*.nga.178.com)': `"${serverName}:${port}/https/$1`,
+        '"(img[0-9]*.ngacn.com)': `"${serverName}:${port}/https/$1`,
+        // fix static template resources
+        'src="template/': 'src="/https/bbs.nga.cn/template/',
+        'src="js/': 'src="/https/bbs.nga.cn/js/',
+        'href="template/': 'href="/https/bbs.nga.cn/template/',
+        // fix login/register paths
+        '\'/nuke.php': '\'/https/bbs.nga.cn/nuke.php',
+        '"/register.php': '"/https/bbs.nga.cn/register.php',
+    },
+    'account.178.com': {
+        '"/app_api.php': '"/https/account.178.com/app_api.php',
+        'bbs.nga.cn': `${serverName}:${port}/https/bbs.nga.cn`,
+    },
+    'nga.178.com': {
+        '"/app_api.php': '"/https/nga.178.com/app_api.php',
     },
     'web.telegram.org': {
         '"pluto"': `"${serverName}:${port}/https/pluto"`,

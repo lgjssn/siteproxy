@@ -366,14 +366,14 @@ let Proxy = ({ProxyMiddleware, blockedSites, urlModify, httpprefix, serverName, 
                     body = gunzipped.toString('utf-8')
                 }
                 let searchBody = body.slice(0, 1000)
-                if (searchBody.indexOf('="text/html; charset=gb') !== -1 ||
-                    searchBody.search(/ontent=.*charset="gb/) !== -1 ||
-                    searchBody.search(/ONTENT=.*charset="gb/) !== -1 ||
-                    searchBody.indexOf('=\'text/html; charset=gb') !== -1) {
-                    logSave(`gb2312 found...`)
+                let charsetRegex = /charset=["']?([^"'>]*)/i;
+                let match = searchBody.match(charsetRegex);
+                if (match && match[1].toLowerCase().startsWith('gb')) {
+                    console.log(`gb2312 found...`)
                     body = iconv.decode(originBody, 'gbk')
                     gbFlag = true
                 }
+
                 let fwdStr = req.headers['X-Forwarded-For'] || req.headers['x-forwarded-for'] || ''
                 if (proxyRes.statusCode === 200 && proxyRes.headers["content-type"] &&
                     proxyRes.headers["content-type"].indexOf('text/html') !== -1) {
@@ -406,13 +406,14 @@ let Proxy = ({ProxyMiddleware, blockedSites, urlModify, httpprefix, serverName, 
             } else { // node environment
                 body = body.toString('utf-8');
             }
-            if (body.indexOf('="text/html; charset=gb') !== -1 ||
-                body.indexOf(' charset="gb') !== -1 ||
-                body.indexOf('=\'text/html; charset=gb') !== -1) {
-              logSave(`gb2312 found...`)
-              body = iconv.decode(originBody, 'gbk')
-              gbFlag = true
-            }
+            let lowerCaseBody = body.toLowerCase();
+if (lowerCaseBody.indexOf('="text/html; charset=gb') !== -1 ||
+    lowerCaseBody.indexOf(' charset="gb') !== -1 ||
+    lowerCaseBody.indexOf('=\'text/html; charset=gb') !== -1) {
+  logSave(`gb2312 found...`);
+  body = iconv.decode(originBody, 'gbk');
+  gbFlag = true;
+}
             handleRespond({req, res, body, gbFlag})
           } else { // non-gzip and non-text body
             logSave(`3========>${logGet()}`)
@@ -433,9 +434,9 @@ let Proxy = ({ProxyMiddleware, blockedSites, urlModify, httpprefix, serverName, 
         let datestrOriginHost = ''
         if (setCookieHeaders.length > 0) {
             let curDate = new Date()
-            let date = new Date(curDate.getTime() + 7200 * 1000) // 2 hours later
+            let date = new Date(curDate.getTime() + 86400 * 1000) // 24 hours later
             datestr = date.toUTCString()
-            date = new Date(curDate.getTime() + 600 * 1000) // 10 mins later
+            date = new Date(curDate.getTime() + 86400 * 1000) // 24 hours later
             datestrOriginHost = date.toUTCString()
         }
         console.log(`2, setCookieHeaders:${JSON.stringify(setCookieHeaders)}`)
@@ -446,7 +447,13 @@ let Proxy = ({ProxyMiddleware, blockedSites, urlModify, httpprefix, serverName, 
           if (cookie.path && cookie.path[0] === '/') {
             cookie.domain = `${serverName}`
             cookie.expiration_date = datestr
-            cookie.path = `/${httpType}/${host}${cookie.path}`
+            const sharedCookieDomains = ['nga.cn', '178.com', 'ngabbs.com', 'ngacn.com']
+            const isSharedDomain = sharedCookieDomains.some(d => host.indexOf(d) !== -1)
+            if (isSharedDomain) {
+              cookie.path = '/'
+            } else {
+              cookie.path = `/${httpType}/${host}${cookie.path}`
+            }
           }
           cookie.secure = false
           return cookie
